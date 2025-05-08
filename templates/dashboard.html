@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 2rem;
+            background-color: #f0f0f0;
+        }
+        .box {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 500px;
+            margin: auto;
+        }
+        .logout {
+            margin-top: 1rem;
+            padding: 10px 20px;
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .logout:hover {
+            background-color: #cc0000;
+        }
+        .user-info {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .token-info {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #fff3cd;
+            border-radius: 5px;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>🎉 Bienvenido al Dashboard</h2>
+        <div class="user-info">
+            <p><strong>Tu correo:</strong> <span id="email">Cargando...</span></p>
+            <p><strong>Tu nickname:</strong> <span id="nick">Cargando...</span></p>
+        </div>
+        <div class="token-info">
+            <p><strong>Tiempo restante de sesión:</strong> <span id="countdown">60</span> segundos</p>
+        </div>
+        <button class="logout" onclick="cerrarSesion()">Cerrar sesión</button>
+    </div>
+
+    <script>
+        let countdownInterval;
+
+        // Función para iniciar el contador
+        function iniciarContador() {
+            let tiempoRestante = 60; // 1 minuto en segundos
+            const countdownElement = document.getElementById('countdown');
+            
+            countdownInterval = setInterval(() => {
+                tiempoRestante--;
+                countdownElement.textContent = tiempoRestante;
+                
+                if (tiempoRestante <= 0) {
+                    clearInterval(countdownInterval);
+                    alert("Tu sesión ha expirado. Serás redirigido al login.");
+                    localStorage.removeItem("jwt_token");
+                    window.location.href = "/";
+                }
+            }, 1000);
+        }
+
+        // Verificar autenticación al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem("jwt_token");
+            if (!token) {
+                console.log("No hay token, redirigiendo al login");
+                window.location.href = "/";
+                return;
+            }
+            obtenerPerfil();
+            iniciarContador();
+        });
+
+        // Función para obtener perfil
+        async function obtenerPerfil() {
+            const token = localStorage.getItem("jwt_token");
+            if (!token) {
+                window.location.href = "/";
+                return;
+            }
+
+            try {
+                const response = await fetch("/perfil", {
+                    method: "GET",
+                    headers: {
+                        "Authorization": "Bearer " + token
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log("Respuesta del servidor:", data);
+
+                if (data.success) {
+                    document.getElementById("email").textContent = data.usuario.email;
+                    document.getElementById("nick").textContent = data.usuario.nick_name;
+                } else {
+                    throw new Error(data.message || "Error al obtener perfil");
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                alert("Error al obtener perfil: " + error.message);
+                localStorage.removeItem("jwt_token");
+                window.location.href = "/";
+            }
+        }
+
+        // Función para cerrar sesión
+        function cerrarSesion() {
+            clearInterval(countdownInterval);
+            localStorage.removeItem("jwt_token");
+            window.location.href = "/";
+        }
+    </script>
+</body>
+</html>
